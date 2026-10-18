@@ -247,7 +247,7 @@ struct ContentView: View {
             Button(action: timer.toggle) {
                 startButtonLabel
                     .frame(width: 283.5, height: 90.5)
-                    .glassEffect(.regular.tint(orange), in: Capsule())
+                    .glassEffect(.regular.tint(orange).interactive(), in: Capsule())
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.space, modifiers: [])
