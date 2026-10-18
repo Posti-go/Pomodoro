@@ -126,9 +126,16 @@ final class PomodoroTimerModel: ObservableObject {
 
 struct ContentView: View {
     @ObservedObject var timer: PomodoroTimerModel
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var hoveredIncrement: String?
+    @State private var isResetHovered = false
 
     private let increments: [(String, Int)] = [("1h", 3600), ("20m", 1200), ("10m", 600), ("5m", 300)]
-    private let ink = Color(red: 62 / 255, green: 64 / 255, blue: 68 / 255)
+    private var ink: Color {
+        colorScheme == .dark
+            ? .white
+            : Color(red: 62 / 255, green: 64 / 255, blue: 68 / 255)
+    }
     private let orange = Color(red: 231 / 255, green: 58 / 255, blue: 0)
 
     var body: some View {
@@ -160,13 +167,18 @@ struct ContentView: View {
                                         .frame(width: 90.5, height: 90.5)
                                         .background {
                                             Circle()
-                                                .fill(.ultraThinMaterial)
+                                                .fill(hoveredIncrement == title ? .regularMaterial : .ultraThinMaterial)
                                                 .overlay { Circle().fill(.white.opacity(0.18)) }
                                                 .overlay { Circle().strokeBorder(.regularMaterial, lineWidth: 1) }
                                         }
                                         .contentShape(Circle())
                                 }
                                 .buttonStyle(.plain)
+                                .onHover { isHovering in
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        hoveredIncrement = isHovering ? title : nil
+                                    }
+                                }
                                 .accessibilityLabel("Add \(title)")
                             }
                         }
@@ -228,13 +240,18 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background {
                         Circle()
-                            .fill(.ultraThinMaterial)
+                            .fill(isResetHovered ? .regularMaterial : .ultraThinMaterial)
                             .overlay { Circle().fill(.white.opacity(0.18)) }
                             .overlay { Circle().strokeBorder(.regularMaterial, lineWidth: 1) }
                     }
             }
             .buttonStyle(.plain)
             .frame(width: 90.5, height: 90.5)
+            .onHover { isHovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isResetHovered = isHovering
+                }
+            }
 
             startStopButton
         }

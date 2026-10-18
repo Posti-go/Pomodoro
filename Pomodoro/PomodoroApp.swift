@@ -18,6 +18,7 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
     private let timer = PomodoroTimerModel()
     private var statusItem: NSStatusItem?
     private var panel: TimerPanel?
+    private var aboutWindow: NSWindow?
     private var timerStateCancellable: AnyCancellable?
     private var alarmStateCancellable: AnyCancellable?
     private var localEventMonitor: Any?
@@ -25,15 +26,11 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let icon = NSImage(named: "MenuBarIcon") {
-            icon.isTemplate = true
-            icon.size = NSSize(width: 18, height: 18)
-            item.button?.image = icon
-        }
         item.button?.toolTip = "Pomodoro Timer"
         item.button?.target = self
         item.button?.action = #selector(togglePanel(_:))
         statusItem = item
+        updateStatusItemForAlarm(isPlaying: false)
 
         let timerPanel = TimerPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 466))
         let hostingView = NSHostingView(rootView: ContentView(timer: timer))
@@ -57,11 +54,13 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
         alarmStateCancellable = timer.$isAlarmPlaying
             .dropFirst()
             .sink { [weak self] isAlarmPlaying in
-                guard isAlarmPlaying else { return }
                 DispatchQueue.main.async { [weak self] in
                     MainActor.assumeIsolated {
-                        guard let self, self.timer.isAlarmPlaying else { return }
-                        self.presentAlarm()
+                        guard let self, self.timer.isAlarmPlaying == isAlarmPlaying else { return }
+                        self.updateStatusItemForAlarm(isPlaying: isAlarmPlaying)
+                        if isAlarmPlaying {
+                            self.presentAlarm()
+                        }
                     }
                 }
             }
@@ -104,6 +103,49 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(sender)
     }
 
+    private func updateStatusItemForAlarm(isPlaying: Bool) {
+        guard let statusItem, let button = statusItem.button else { return }
+
+        if isPlaying {
+            statusItem.length = NSStatusItem.variableLength
+            button.image = nil
+            button.imagePosition = .noImage
+            button.title = "Time's up!"
+            button.attributedTitle = NSAttributedString(
+                string: "Time's up!",
+                attributes: [
+                    .foregroundColor: NSColor.white,
+                    .font: NSFont.systemFont(ofSize: 13, weight: .medium)
+                ]
+            )
+            button.wantsLayer = true
+            button.layer?.backgroundColor = NSColor(
+                srgbRed: 231.0 / 255.0,
+                green: 58.0 / 255.0,
+                blue: 0,
+                alpha: 1
+            ).cgColor
+            button.layoutSubtreeIfNeeded()
+            button.layer?.cornerRadius = button.bounds.height / 2
+            button.layer?.masksToBounds = true
+            button.toolTip = "Time's up!"
+        } else {
+            statusItem.length = NSStatusItem.squareLength
+            button.attributedTitle = NSAttributedString(string: "")
+            button.title = ""
+            button.imagePosition = .imageOnly
+            if let icon = NSImage(named: "MenuBarIcon") {
+                icon.isTemplate = true
+                icon.size = NSSize(width: 18, height: 18)
+                button.image = icon
+            }
+            button.layer?.backgroundColor = NSColor.clear.cgColor
+            button.layer?.cornerRadius = 0
+            button.layer?.masksToBounds = false
+            button.toolTip = "Pomodoro Timer"
+        }
+    }
+
     private func showStatusContextMenu(for event: NSEvent) -> Bool {
         guard let button = statusItem?.button,
               let window = button.window,
@@ -113,11 +155,50 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
 
         hidePanel()
         let menu = NSMenu()
+        let aboutItem = NSMenuItem(title: "About Pomodoro", action: #selector(showAbout(_:)), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+        menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit Pomodoro", action: #selector(quitApp(_:)), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
         menu.popUp(positioning: nil, at: NSPoint(x: button.bounds.midX, y: button.bounds.minY), in: button)
         return true
+    }
+
+    @objc private func showAbout(_ sender: Any?) {
+        if let aboutWindow {
+            aboutWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 256),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.setFrame(NSRect(origin: .zero, size: NSSize(width: 320, height: 256)), display: false)
+        window.title = "About Pomodoro"
+        window.titleVisibility = .hidden
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .windowBackgroundColor
+        window.hasShadow = true
+        window.standardWindowButton(.miniaturizeButton)?.isEnabled = false
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
+        window.minSize = window.frame.size
+        window.maxSize = window.frame.size
+
+        let hostingView = NSHostingView(rootView: AboutView(version: version))
+        hostingView.frame = window.contentView?.bounds ?? .zero
+        hostingView.autoresizingMask = [.width, .height]
+        window.contentView = hostingView
+        window.center()
+        aboutWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func showPanel() {
@@ -199,5 +280,34 @@ private final class TimerPanel: NSPanel {
         hasShadow = true
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = true
+    }
+}
+
+private struct AboutView: View {
+    let version: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 104, height: 104)
+                .padding(.top, 32)
+
+            Text("Pomodoro")
+                .font(.system(size: 18, weight: .bold))
+                .padding(.top, 16)
+
+            Text("Version \(version)")
+                .font(.system(size: 14))
+                .padding(.top, 8)
+
+            Text("© Carlos Postigo")
+                .font(.system(size: 14))
+                .padding(.top, 8)
+                .padding(.bottom, 32)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
