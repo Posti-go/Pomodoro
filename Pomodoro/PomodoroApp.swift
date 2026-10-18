@@ -33,11 +33,6 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
         item.button?.toolTip = "Pomodoro Timer"
         item.button?.target = self
         item.button?.action = #selector(togglePanel(_:))
-        let contextMenu = NSMenu()
-        let quitItem = NSMenuItem(title: "Quit Pomodoro", action: #selector(quitApp(_:)), keyEquivalent: "q")
-        quitItem.target = self
-        contextMenu.addItem(quitItem)
-        item.button?.menu = contextMenu
         statusItem = item
 
         let timerPanel = TimerPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 466))
@@ -78,6 +73,12 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
                 }
                 return nil
             }
+            if event.type == .rightMouseDown {
+                let showedMenu = MainActor.assumeIsolated {
+                    self?.showStatusContextMenu(for: event) ?? false
+                }
+                if showedMenu { return nil }
+            }
             MainActor.assumeIsolated {
                 self?.hidePanelIfClickOutside()
             }
@@ -101,6 +102,22 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp(_ sender: Any?) {
         NSApp.terminate(sender)
+    }
+
+    private func showStatusContextMenu(for event: NSEvent) -> Bool {
+        guard let button = statusItem?.button,
+              let window = button.window,
+              event.window === window else { return false }
+        let point = button.convert(event.locationInWindow, from: nil)
+        guard button.bounds.contains(point) else { return false }
+
+        hidePanel()
+        let menu = NSMenu()
+        let quitItem = NSMenuItem(title: "Quit Pomodoro", action: #selector(quitApp(_:)), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        menu.popUp(positioning: nil, at: NSPoint(x: button.bounds.midX, y: button.bounds.minY), in: button)
+        return true
     }
 
     private func showPanel() {
