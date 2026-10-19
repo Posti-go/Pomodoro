@@ -32,9 +32,9 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
         updateStatusItemForAlarm(isPlaying: false)
 
-        let timerPanel = TimerPanel(contentRect: NSRect(x: 0, y: 0, width: 330, height: 373))
+        let timerPanel = TimerPanel(contentRect: NSRect(x: 0, y: 0, width: 330, height: 361))
         let hostingView = NSHostingView(rootView: ContentView(timer: timer))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 330, height: 373)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 330, height: 361)
         hostingView.autoresizingMask = [.width, .height]
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 56
@@ -223,7 +223,7 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
 
         var frame = panel.frame
         let fixedTop = frame.maxY
-        frame.size.height = 373
+        frame.size.height = 361
         frame.origin.y = fixedTop - frame.height
         panel.setFrame(frame, display: true)
         showPanel()
@@ -231,7 +231,7 @@ private final class PomodoroAppDelegate: NSObject, NSApplicationDelegate {
 
     private func resizePanel(isRunning: Bool) {
         guard let panel else { return }
-        let targetHeight: CGFloat = isRunning ? 299 : 373
+        let targetHeight: CGFloat = isRunning ? 287 : 361
         var targetFrame = panel.frame
         let fixedTop = panel.frame.maxY
         targetFrame.origin.y = fixedTop - targetHeight

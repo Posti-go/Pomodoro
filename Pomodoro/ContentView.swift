@@ -141,7 +141,7 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
+            HStack(spacing: timerCharacterSpacing) {
                 ForEach(Array(timer.formattedTime.enumerated()), id: \.offset) { element in
                     let character = element.element
                     Text(String(character))
@@ -152,10 +152,11 @@ struct ContentView: View {
                             width: character == ":" ? timerGlyphWidths.separator : timerGlyphWidths.digit,
                             height: 191
                         )
+                        .offset(y: character == ":" ? -17 : 0)
                 }
             }
             .contentTransition(.identity)
-            .frame(width: 290, height: 191)
+            .frame(width: 289, height: 191)
             .accessibilityElement()
             .accessibilityLabel("Timer: \(timer.formattedTime)")
             .opacity(timer.isAlarmPlaying && !timer.isAlarmVisible ? 0 : 1)
@@ -200,8 +201,10 @@ struct ContentView: View {
             }
             .frame(width: 290)
         }
-        .padding(20)
-        .frame(width: 330, height: 373, alignment: .top)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 20)
+        .frame(width: 330, height: 361, alignment: .top)
         .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         .clipped()
         .modifier(NativePanelGlass())
@@ -344,6 +347,12 @@ struct ContentView: View {
 
         let digitWidth = advances.prefix(10).map(\.width).max() ?? 40
         return (digitWidth, advances[10].width)
+    }
+
+    private var timerCharacterSpacing: CGFloat {
+        let glyphWidths = timerGlyphWidths
+        let fixedGlyphWidth = 6 * glyphWidths.digit + 2 * glyphWidths.separator
+        return max(0, (289 - fixedGlyphWidth) / 7)
     }
 
     private func fontAxisTag(_ tag: String) -> UInt32 {
