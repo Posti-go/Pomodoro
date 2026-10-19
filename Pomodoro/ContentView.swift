@@ -141,20 +141,28 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
         VStack(spacing: 0) {
-            Text(timer.formattedTime)
-                .font(timerFont)
-                .monospacedDigit()
-                .foregroundStyle(ink)
-                .contentTransition(.identity)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .frame(width: 380, height: 239)
-                .accessibilityLabel("Timer: \(timer.formattedTime)")
-                .opacity(timer.isAlarmPlaying && !timer.isAlarmVisible ? 0 : 1)
+            HStack(spacing: 0) {
+                ForEach(Array(timer.formattedTime.enumerated()), id: \.offset) { element in
+                    let character = element.element
+                    Text(String(character))
+                        .font(timerFont)
+                        .monospacedDigit()
+                        .foregroundStyle(ink)
+                        .frame(
+                            width: character == ":" ? timerGlyphWidths.separator : timerGlyphWidths.digit,
+                            height: 191
+                        )
+                }
+            }
+            .contentTransition(.identity)
+            .frame(width: 290, height: 191)
+            .accessibilityElement()
+            .accessibilityLabel("Timer: \(timer.formattedTime)")
+            .opacity(timer.isAlarmPlaying && !timer.isAlarmVisible ? 0 : 1)
 
             VStack(spacing: 0) {
                 Color.clear
-                    .frame(height: 96.5)
+                    .frame(height: 74)
                     .overlay(alignment: .top) {
                         HStack(spacing: 6) {
                             ForEach(increments, id: \.0) { title, seconds in
@@ -162,9 +170,9 @@ struct ContentView: View {
                                     timer.addTime(seconds)
                                 } label: {
                                     Text(title)
-                                        .font(.system(size: 18, weight: .regular))
+                                        .font(.system(size: 16, weight: .regular))
                                         .foregroundStyle(ink)
-                                        .frame(width: 90.5, height: 90.5)
+                                        .frame(width: 68, height: 68)
                                         .background {
                                             Circle()
                                                 .fill(hoveredIncrement == title ? .regularMaterial : .ultraThinMaterial)
@@ -182,7 +190,7 @@ struct ContentView: View {
                                 .accessibilityLabel("Add \(title)")
                             }
                         }
-                        .frame(height: 90.5, alignment: .top)
+                        .frame(height: 68, alignment: .top)
                         .opacity(timer.isRunning ? 0 : 1)
                         .allowsHitTesting(!timer.isRunning)
                         .accessibilityHidden(timer.isRunning)
@@ -190,10 +198,10 @@ struct ContentView: View {
 
                 coordinatedButtonPair
             }
-            .frame(width: 380)
+            .frame(width: 290)
         }
         .padding(20)
-        .frame(width: 420, height: 466, alignment: .top)
+        .frame(width: 330, height: 373, alignment: .top)
         .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         .clipped()
         .modifier(NativePanelGlass())
@@ -209,7 +217,7 @@ struct ContentView: View {
                 .opacity(timer.isRunning ? 1 : 0)
                 .accessibilityHidden(!timer.isRunning)
         }
-        .font(.system(size: 16, weight: .regular))
+        .font(.system(size: 14, weight: .regular))
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Capsule())
@@ -235,7 +243,7 @@ struct ContentView: View {
         HStack(spacing: 6) {
             Button(action: timer.reset) {
                 Text("RESET")
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(ink)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background {
@@ -246,7 +254,7 @@ struct ContentView: View {
                     }
             }
             .buttonStyle(.plain)
-            .frame(width: 90.5, height: 90.5)
+            .frame(width: 68, height: 68)
             .onHover { isHovering in
                 withAnimation(.easeInOut(duration: 0.15)) {
                     isResetHovered = isHovering
@@ -255,7 +263,7 @@ struct ContentView: View {
 
             startStopButton
         }
-        .frame(width: 380, height: 90.5)
+        .frame(width: 290, height: 68)
     }
 
     @ViewBuilder
@@ -263,7 +271,7 @@ struct ContentView: View {
         if #available(macOS 26.0, *) {
             Button(action: timer.toggle) {
                 startButtonLabel
-                    .frame(width: 283.5, height: 90.5)
+                    .frame(width: 216, height: 68)
                     .glassEffect(.regular.tint(orange).interactive(), in: Capsule())
             }
             .buttonStyle(.plain)
@@ -271,23 +279,27 @@ struct ContentView: View {
         } else {
             Button(action: timer.toggle) {
                 startButtonLabel
-                    .frame(width: 283.5, height: 90.5)
+                    .frame(width: 216, height: 68)
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
             .tint(orange)
             .keyboardShortcut(.space, modifiers: [])
-            .frame(width: 283.5, height: 90.5)
+            .frame(width: 216, height: 68)
         }
     }
 
     private var controlsOffset: CGFloat {
-        timer.isRunning ? -96.5 : 0
+        timer.isRunning ? -74 : 0
     }
 
     private var timerFont: Font {
-        guard let systemFont = CTFontCreateUIFontForLanguage(.system, 200, nil) else {
-            return .system(size: 200, weight: .ultraLight)
+        Font(timerCTFont)
+    }
+
+    private var timerCTFont: CTFont {
+        guard let systemFont = CTFontCreateUIFontForLanguage(.system, 160, nil) else {
+            return CTFontCreateWithName(".AppleSystemUIFont" as CFString, 160, nil)
         }
         let axes: [NSNumber: NSNumber] = [
             NSNumber(value: fontAxisTag("wdth")): 35,
@@ -298,8 +310,40 @@ struct ContentView: View {
             CTFontCopyFontDescriptor(systemFont),
             [kCTFontVariationAttribute: axes] as CFDictionary
         )
-        let variableFont = CTFontCreateWithFontDescriptor(descriptor, 200, nil)
-        return Font(variableFont)
+        return CTFontCreateWithFontDescriptor(descriptor, 160, nil)
+    }
+
+    private var timerGlyphWidths: (digit: CGFloat, separator: CGFloat) {
+        let characters: [UniChar] = Array("0123456789:".utf16)
+        var glyphs = [CGGlyph](repeating: 0, count: characters.count)
+        let glyphsCreated = characters.withUnsafeBufferPointer { charactersBuffer in
+            glyphs.withUnsafeMutableBufferPointer { glyphsBuffer in
+                CTFontGetGlyphsForCharacters(
+                    timerCTFont,
+                    charactersBuffer.baseAddress!,
+                    glyphsBuffer.baseAddress!,
+                    charactersBuffer.count
+                )
+            }
+        }
+        guard glyphsCreated else { return (40, 16) }
+
+        var advances = [CGSize](repeating: .zero, count: glyphs.count)
+        let advanceCount = glyphs.withUnsafeBufferPointer { glyphsBuffer in
+            advances.withUnsafeMutableBufferPointer { advancesBuffer in
+                CTFontGetAdvancesForGlyphs(
+                    timerCTFont,
+                    .horizontal,
+                    glyphsBuffer.baseAddress!,
+                    advancesBuffer.baseAddress!,
+                    glyphsBuffer.count
+                )
+            }
+        }
+        guard advanceCount == Double(glyphs.count) else { return (40, 16) }
+
+        let digitWidth = advances.prefix(10).map(\.width).max() ?? 40
+        return (digitWidth, advances[10].width)
     }
 
     private func fontAxisTag(_ tag: String) -> UInt32 {
