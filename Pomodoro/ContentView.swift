@@ -361,10 +361,17 @@ struct ContentView: View {
 }
 
 private struct NativePanelGlass: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 56))
+            content
+                .background(
+                    (colorScheme == .dark ? Color.black : Color.white).opacity(0.3),
+                    in: RoundedRectangle(cornerRadius: 56)
+                )
+                .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 56))
         } else {
             content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 56))
         }
